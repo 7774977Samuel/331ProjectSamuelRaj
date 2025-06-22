@@ -3,65 +3,81 @@ package project;
 import java.util.Random;
 import java.util.Scanner;
 
+/**
+ * driver class simulates a fault-tolerant embedded system
+ * with three sensors and resilient logging for discrepancies 
+ */
 public class Driver {
 
     private static final Random random = new Random();
-    private static double lastValidReading = 0.0;
+    private static double lastValidReading = 50.0; // initial fallback value
 
     public static void main(String[] args) {
         Scanner input = new Scanner(System.in);
 
-        System.out.print("enter max temperature: ");
+        // Read temperature limit from user
+        System.out.print("Enter max temperature: ");
         double maxTemp = input.nextDouble();
 
         double temp = getTemperature(maxTemp);
         double humidity = getHumidity();
 
-        System.out.printf("Temp: %.2f°C\n", temp);
-        System.out.printf("humidity: %.2f%%\n", humidity);
+        System.out.printf("\nTemperature: %.2f°C\n", temp);
+        System.out.printf("Humidity: %.2f%%\n", humidity);
 
+        // Read Sensor 3 values
         double[] sensor3Readings = new double[3];
         for (int i = 0; i < 3; i++) {
             sensor3Readings[i] = getSensor3Reading();
-            System.out.printf("Sensor 3.%d: %.2f\n", i + 1, sensor3Readings[i]);
+            System.out.printf("Sensor 3.%d reading: %.2f\n", i + 1, sensor3Readings[i]);
         }
 
+        // Apply majority voter logic
         Double result = checkMajority(sensor3Readings);
 
         if (result != null) {
-            System.out.printf("Sensor 3 (Majority): %.2f\n", result);
+            System.out.printf("Sensor 3 (Majority Vote): %.2f\n", result);
             lastValidReading = result;
         } else {
-            System.out.printf("No majority — using previous value: %.2f\n", lastValidReading);
+            System.out.printf("No majority — using last valid value: %.2f\n", lastValidReading);
             String logMessage = "Disagreement between Sensor 3 replicas: "
-                    + String.format("3.1=%.2f, 3.2=%.2f, 3.3=%.2f", 
-                      sensor3Readings[0], sensor3Readings[1], sensor3Readings[2]);
+                    + String.format("3.1=%.2f, 3.2=%.2f, 3.3=%.2f",
+                    sensor3Readings[0], sensor3Readings[1], sensor3Readings[2]);
             FileLogger.log("log.txt", logMessage);
         }
-
-        input.close();
     }
 
-    private static double getTemperature(double max) {
-        return random.nextDouble() * max;
+    // Generates a temperature reading
+    public static double getTemperature(double maxTemp) {
+        return random.nextDouble() * maxTemp;
     }
 
-    private static double getHumidity() {
-        return 30 + random.nextDouble() * 70;
+    // Generates a humidity reading (0 to 100%)
+    public static double getHumidity() {
+        return random.nextDouble() * 100.0;
     }
 
-    private static double getSensor3Reading() {
-        return 100 + random.nextInt(5);
+    // Generates a value for a Sensor 3 
+    public static double getSensor3Reading() {
+        return 45 + random.nextDouble() * 10; // range: 45 to 55
     }
 
-    private static Double checkMajority(double[] vals) {
-        double a = vals[0], b = vals[1], c = vals[2];
-        double epsilon = 0.01;
+    /*
+     * Checks for a majority among three sensor readings.
+     * If no majority exists, returns null.
+     */
+    public static Double checkMajority(double[] values) {
+        final double EPSILON = 0.05;
 
-        if (Math.abs(a - b) < epsilon) return a;
-        if (Math.abs(a - c) < epsilon) return a;
-        if (Math.abs(b - c) < epsilon) return b;
+        boolean v01 = Math.abs(values[0] - values[1]) < EPSILON;
+        boolean v02 = Math.abs(values[0] - values[2]) < EPSILON;
+        boolean v12 = Math.abs(values[1] - values[2]) < EPSILON;
 
-        return null; // no match
+        if (v01 && v02) return values[0]; // all three match
+        if (v01) return values[0];        // 0 and 1 match
+        if (v02) return values[0];        // 0 and 2 match
+        if (v12) return values[1];        // 1 and 2 match
+
+        return null; // all three different
     }
 }
