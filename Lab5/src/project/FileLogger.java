@@ -13,8 +13,8 @@ import java.util.Random;
  */
 public class FileLogger {
 
-    public static final int MAX_BACKUP = 5;
-    private static final String FINAL_LOG = "principal_log.txt";
+    public static final int MAXBACKUP = 5;
+    private static final String FINALLOG = "principal_log.txt";
     private static final Random random = new Random();
 
     /**
@@ -31,13 +31,13 @@ public class FileLogger {
         if (tryWrite(baseFile, fullMsg)) return;
 
         // Attempt backup files
-        for (int i = 1; i <= MAX_BACKUP; i++) {
+        for (int i = 1; i <= MAXBACKUP; i++) {
             String backup = baseFile.replace(".txt", i + ".txt");
             if (tryWrite(backup, fullMsg)) return;
         }
 
         // Final fallback
-        try (FileWriter writer = new FileWriter(FINAL_LOG, true)) {
+        try (FileWriter writer = new FileWriter(FINALLOG, true)) {
             writer.write(fullMsg + " [fallback log used]\n");
         } catch (IOException e) {
             System.err.println("Critical log failure: could not write to principal_log.txt.");
