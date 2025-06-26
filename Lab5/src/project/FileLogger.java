@@ -14,8 +14,8 @@ import java.util.Random;
 public class FileLogger {
 
     public static final int MAXBACKUP = 5;
-    private static final String FINALLOG = "principal_log.txt";
-    private static final Random random = new Random();
+    private static final String FINALLOG ="principal_log.txt";
+    private static final Random random= new Random();
 
     /**
      * Attempts to log a message to the base file and its backups on failure.
@@ -24,40 +24,40 @@ public class FileLogger {
      * @param msg      the message to log
      */
     public static void log(String baseFile, String msg) {
-        String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        String fullMsg = "[" + time + "] " + msg;
+        String time =new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        String full_msg= "[" + time + "] " +msg;
 
         // Attempt writing to base log file
-        if (tryWrite(baseFile, fullMsg)) return;
+        if (tryWrite(baseFile,full_msg)) return;
 
         // Attempt backup files
-        for (int i = 1; i <= MAXBACKUP; i++) {
-            String backup = baseFile.replace(".txt", i + ".txt");
-            if (tryWrite(backup, fullMsg)) return;
+        for (int i = 1;i <= MAXBACKUP; i++) {
+            String backup =baseFile.replace(".txt",i +".txt");
+            if (tryWrite(backup, full_msg)) return;
         }
 
         // Final fallback
         try (FileWriter writer = new FileWriter(FINALLOG, true)) {
-            writer.write(fullMsg + " [fallback log used]\n");
+            writer.write(full_msg + " \n");
         } catch (IOException e) {
-            System.err.println("Critical log failure: could not write to principal_log.txt.");
+            System.err.println(" could not write to principal_log.txt.");
         }
     }
 
     // Attempts to write to a file, simulating 40% chance of failure
     private static boolean tryWrite(String file, String msg) {
         try {
-            if (random.nextInt(100) < 40) {
+            if (random.nextInt(100)< 40) {
                 throw new IOException("Simulated failure");
             }
 
-            try (FileWriter writer = new FileWriter(file, true)) {
-                writer.write(msg + "\n");
+            try (FileWriter writer =new FileWriter(file, true)) {
+                writer.write(msg +"\n");
                 return true;
             }
 
-        } catch (IOException e) {
-            System.err.println("Log failed: " + file + " (" + e.getMessage() + ")");
+        } catch (IOException e){
+            System.err.println("Log failed:"+ file +" (" + e.getMessage()+ ")");
             return false;
         }
     }

@@ -1,287 +1,142 @@
 package projectq2;
-
-
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 import javax.imageio.ImageIO;
 
-public class ImageApplication {
-    final static int l_max = 255;
-    final static int number_of_loops = 3;
-    final static int[] num_thread = {1, 2, 4, 8, 16};
+ 
+public class imageApplication{
+	public static void main(String[] args) {
+		String fileName1="/C:/Users/samun/Documents/GitHub/331ProjectSamuelRa/Lab5/image/Rain_Tree.jpg";
+		String fileName2="/C:/Users/samun/Documents/GitHub/331ProjectSamuelRa/Lab5/image/Wr.jpg";  
+		
+		colourImage ImgStruct= new colourImage();
+        // read the image filename1 and store its dimension and pixel values in ImgStruct			
+		imageReadWrite.readJpgImage(fileName1, ImgStruct);
+		 // write ImgStruct in the jpeg file filenName2	
+		imageReadWrite.writeJpgImage(ImgStruct, fileName2);
+            
+		// demo reshaping a 4*4 matrix into 16 1-D array
+		int width=4, height=4;
+		short mat [][]=new short[height][width];
+		  for(int i=0; i<height; i++)
+			  for(int j=0;j<width;j++)
+				  mat[i][j]=(short)(i*width+j);	
+	     
+	     short vect []=new short[height*width];
+	     matManipulation.mat2Vect(mat, width, height, vect);
+	   
+	     for(int i=0; i<height; i++) {	    
+			  for(int j=0;j<width;j++)
+				  System.out.printf("%3d ", mat[i][j]);
+			  System.out.println();
+	     }
+	     
+	     
+	     for(int i=0; i<width*height; i++) 	    
+				  System.out.printf("%d ", vect[i]);
+	
+	     
+	     
+	} // main		            
+		            
+}
 
-    public static void main(String[] args) {
-        String fileName1 = "c:/image/Rain_Tree.jpg";
-        String fileName2 = "c:/image/Wr";
+  
+    	
+/**
+ * 
+ * A class with 2 Utility methods to read the pixels and dimension of an image, and write the image data into a jpeg file
+ *
+ */
+class imageReadWrite{
 
-        colourImage img = new colourImage();
-        imageReadWrite.readJpgImage(fileName1, img);
+	public static void readJpgImage(String fileName, colourImage ImgStruct) {
+		 try {
+	            // Read the image file
+	            File file = new File(fileName);
+	            BufferedImage image = ImageIO.read(file);
+	            
+	            System.out.println("file: "+file.getCanonicalPath());
+	            
+	            // Check if the image is in sRGB color space
+	            if (!image.getColorModel().getColorSpace().isCS_sRGB()) {
+	                System.out.println("Image is not in sRGB color space");
+	                return;
+	            }
+	            
+	            // Get the width and height of the image
+	            int width = image.getWidth();
+	            int height= image.getHeight();
+	            ImgStruct.width=width;
+	            ImgStruct.height=height;
+	            ImgStruct.pixels=new short[height][width][3];
 
-        System.out.println("Single-thread implementation:");
-        for (int i = 0; i < number_of_loops; i++) {
-            colourImage output = new colourImage();
-            output.height = img.height;
-            output.width = img.width;
-            output.pixels = new short[img.height][img.width][3];
+	           // Loop over each pixel of the image and store its RGB color components in the array
+	            for (int y = 0;y < height; y++) {
+	                for (int x = 0; x < width; x++) {
+	                    // Get the color of the current pixel
+	                    int pixel =image.getRGB(x, y);
+	                    Color color = new Color(pixel, true);
 
-            long startTime = System.currentTimeMillis();
-            equalizeHistogram(img, output);
-            long endTime = System.currentTimeMillis();
+	                    // Store the red, green, and blue color components of the pixel in the array
+	                    ImgStruct.pixels[y][x][0] = (short)color.getRed();
+	                    ImgStruct.pixels[y][x][1]= (short) color.getGreen();
+	                    ImgStruct.pixels[y][x][2] =(short) color.getBlue();
+	                }
+	            }            
+	                       
 
-            System.out.println("Run " + (i + 1) + ": " + (endTime - startTime) + " ms");
-            imageReadWrite.writeJpgImage(output, fileName2 + "_single" + i + ".jpg");
-        }
+	        } catch (IOException e) {
+	            System.out.println("Error reading image file: " + e.getMessage());
+	        }  	
+	}
 
-        for (int threads : num_thread) {
-            System.out.println("\nMulti-thread implementation with " + threads + " threads (Design i-a, shared atomic histogram):");
-            long totalTime = 0;
-            for (int i = 0; i < number_of_loops; i++) {
-                colourImage output = new colourImage();
-                output.height = img.height;
-                output.width = img.width;
-                output.pixels = new short[img.height][img.width][3];
+	public static void writeJpgImage(colourImage ImgStruct, String fileName) {
+		 try {
+	    	 int width = ImgStruct.width;
+	         int height = ImgStruct.height;
+	         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
-                long startTime = System.currentTimeMillis();
-                equalizeHistogramMultiThreadSharedAtomic(img, output, threads);
-                long endTime = System.currentTimeMillis();
+	         // Set the RGB color values of the BufferedImage using the pixel array
+	         for (int y = 0; y < height; y++) {
+	             for (int x = 0; x < width; x++) {
+	                 int rgb = new Color(ImgStruct.pixels[y][x][0], ImgStruct.pixels[y][x][1], ImgStruct.pixels[y][x][2]).getRGB();
+	                 image.setRGB(x, y, rgb);
+	             }
+	         }
 
-                System.out.println("Run " + (i + 1) + ": " + (endTime - startTime) + " ms");
-                totalTime += (endTime - startTime);
-                imageReadWrite.writeJpgImage(output, fileName2 + "_multi_shared_atomic_" + threads + "_" + i + ".jpg");
-            }
-            System.out.println("Average time: " + (totalTime / number_of_loops) + " ms");
-        }
+	         // Write the BufferedImage to a JPEG file
+	         File outputFile = new File(fileName);
+	         ImageIO.write(image, "jpg", outputFile);
 
-        for (int threads : num_thread) {
-            System.out.println("\nMulti-thread implementation with " + threads + " threads (Design i-b, alternative access pattern):");
-            long totalTime = 0;
-            for (int i = 0; i < number_of_loops; i++) {
-                colourImage output = new colourImage();
-                output.height = img.height;
-                output.width = img.width;
-                output.pixels = new short[img.height][img.width][3];
+	     } catch (IOException e) {
+	         System.out.println("Error writing image file: " + e.getMessage());
+	     }       
+	
+       }//
 
-                long startTime = System.currentTimeMillis();
-                equalizeHistogramMultiThreadSharedAtomicAlt(img, output, threads);
-                long endTime = System.currentTimeMillis();
+}
 
-                System.out.println("Run " + (i + 1) + ": " + (endTime - startTime) + " ms");
-                totalTime += (endTime - startTime);
-                imageReadWrite.writeJpgImage(output, fileName2 + "_multi_shared_atomic_alt_" + threads + "_" + i + ".jpg");
-            }
-            System.out.println("Average time: " + (totalTime / number_of_loops) + " ms");
-        }
+class matManipulation{
+	/**
+	 * reshape a matrix to a 1-D vector
+	 */
+	public static void mat2Vect (short [][] mat, int width, int height, short[] vect) {
+		for(int i=0;i<height; i++)
+			for (int j=0; j<width; j++)
+				vect[j+i*width]=mat[i][j];
+	}
+	
+}
 
-        for (int threads : num_thread) {
-            System.out.println("\nMulti-thread implementation with " + threads + " threads (Design ii, sub-histograms):");
-            long totalTime = 0;
-            for (int i = 0; i < number_of_loops; i++) {
-                colourImage output = new colourImage();
-                output.height = img.height;
-                output.width = img.width;
-                output.pixels = new short[img.height][img.width][3];
 
-                long startTime = System.currentTimeMillis();
-                equalizeHistogramMultiThreadSubHistograms(img, output, threads);
-                long endTime = System.currentTimeMillis();
-
-                System.out.println("Run " + (i + 1) + ": " + (endTime - startTime) + " ms");
-                totalTime += (endTime - startTime);
-                imageReadWrite.writeJpgImage(output, fileName2 + "_multi_sub_hist_" + threads + "_" + i + ".jpg");
-            }
-            System.out.println("Average time: " + (totalTime / number_of_loops) + " ms");
-        }
-    }
-
-    // Single-thread implementation (already explained)
-    public static void equalizeHistogram(colourImage input, colourImage output) {
-        int size = input.height * input.width;
-        for (int c = 0; c < 3; c++) {
-            int[] histogram = new int[256];
-            int[] cumulativeHist = new int[256];
-
-            for (int i = 0; i < input.height; i++) {
-                for (int j = 0; j < input.width; j++) {
-                    int val = input.pixels[i][j][c];
-                    histogram[val]++;
-                }
-            }
-            cumulativeHist[0] = histogram[0];
-            for (int i = 1; i <= l_max; i++) {
-                cumulativeHist[i] = cumulativeHist[i - 1] + histogram[i];
-            }
-            for (int i = 0; i <= l_max; i++) {
-                cumulativeHist[i] = (cumulativeHist[i] * l_max) / size;
-            }
-            for (int i = 0; i < input.height; i++) {
-                for (int j = 0; j < input.width; j++) {
-                    output.pixels[i][j][c] = (short) cumulativeHist[input.pixels[i][j][c]];
-                }
-            }
-        }
-    }
-
-    // Design i-a: shared atomic histogram with row-based slicing
-    public static void equalizeHistogramMultiThreadSharedAtomic(colourImage input, colourImage output, int numThreads) {
-        int height = input.height;
-        int width = input.width;
-        int totalPixels = height * width;
-
-        for (int c = 0; c < 3; c++) {
-            AtomicIntegerArray sharedHist = new AtomicIntegerArray(256);
-            Thread[] threads = new Thread[numThreads];
-            int sliceHeight = height / numThreads;
-
-            for (int t = 0; t < numThreads; t++) {
-                int startRow = t * sliceHeight;
-                int endRow = (t == numThreads - 1) ? height : (t + 1) * sliceHeight;
-
-                threads[t] = new Thread(() -> {
-                    for (int i = startRow; i < endRow; i++) {
-                        for (int j = 0; j < width; j++) {
-                            int val = input.pixels[i][j][c];
-                            sharedHist.incrementAndGet(val);
-                        }
-                    }
-                });
-                threads[t].start();
-            }
-
-            for (Thread t : threads) {
-                try {
-                    t.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            int[] cumulativeHist = new int[256];
-            cumulativeHist[0] = sharedHist.get(0);
-            for (int i = 1; i <= l_max; i++) {
-                cumulativeHist[i] = cumulativeHist[i - 1] + sharedHist.get(i);
-            }
-            for (int i = 0; i <= l_max; i++) {
-                cumulativeHist[i] = (cumulativeHist[i] * l_max) / totalPixels;
-            }
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < width; j++) {
-                    output.pixels[i][j][c] = (short) cumulativeHist[input.pixels[i][j][c]];
-                }
-            }
-        }
-    }
-
-    // Design i-b: shared atomic histogram with column-based slicing (alternative memory access pattern)
-    public static void equalizeHistogramMultiThreadSharedAtomicAlt(colourImage input, colourImage output, int numThreads) {
-        int height = input.height;
-        int width = input.width;
-        int totalPixels = height * width;
-
-        for (int c = 0; c < 3; c++) {
-            AtomicIntegerArray sharedHist = new AtomicIntegerArray(256);
-            Thread[] threads = new Thread[numThreads];
-            int sliceWidth = width / numThreads;
-
-            for (int t = 0; t < numThreads; t++) {
-                int startCol = t * sliceWidth;
-                int endCol = (t == numThreads - 1) ? width : (t + 1) * sliceWidth;
-
-                threads[t] = new Thread(() -> {
-                    for (int i = 0; i < height; i++) {
-                        for (int j = startCol; j < endCol; j++) {
-                            int val = input.pixels[i][j][c];
-                            sharedHist.incrementAndGet(val);
-                        }
-                    }
-                });
-                threads[t].start();
-            }
-
-            for (Thread t : threads) {
-                try {
-                    t.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            int[] cumulativeHist = new int[256];
-            cumulativeHist[0] = sharedHist.get(0);
-            for (int i = 1; i <= l_max; i++) {
-                cumulativeHist[i] = cumulativeHist[i - 1] + sharedHist.get(i);
-            }
-            for (int i = 0; i <= l_max; i++) {
-                cumulativeHist[i] = (cumulativeHist[i] * l_max) / totalPixels;
-            }
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < width; j++) {
-                    output.pixels[i][j][c] = (short) cumulativeHist[input.pixels[i][j][c]];
-                }
-            }
-        }
-    }
-
-    // Design ii: per-thread private histograms merged after threads finish
-    public static void equalizeHistogramMultiThreadSubHistograms(colourImage input, colourImage output, int numThreads) {
-        int height = input.height;
-        int width = input.width;
-        int totalPixels = height * width;
-
-        for (int c = 0; c < 3; c++) {
-            int[][] subHistograms = new int[numThreads][256];
-            Thread[] threads = new Thread[numThreads];
-            int sliceHeight = height / numThreads;
-
-            for (int t = 0; t < numThreads; t++) {
-                final int threadIndex = t;
-                int startRow = t * sliceHeight;
-                int endRow = (t == numThreads - 1) ? height : (t + 1) * sliceHeight;
-
-                threads[t] = new Thread(() -> {
-                    int[] localHist = new int[256];
-                    for (int i = startRow; i < endRow; i++) {
-                        for (int j = 0; j < width; j++) {
-                            int val = input.pixels[i][j][c];
-                            localHist[val]++;
-                        }
-                    }
-                    subHistograms[threadIndex] = localHist;
-                });
-                threads[t].start();
-            }
-
-            for (Thread t : threads) {
-                try {
-                    t.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Merge subHistograms into final histogram
-            int[] histogram = new int[256];
-            for (int i = 0; i < 256; i++) {
-                for (int t = 0; t < numThreads; t++) {
-                    histogram[i] += subHistograms[t][i];
-                }
-            }
-
-            int[] cumulativeHist = new int[256];
-            cumulativeHist[0] = histogram[0];
-            for (int i = 1; i <= l_max; i++) {
-                cumulativeHist[i] = cumulativeHist[i - 1] + histogram[i];
-            }
-            for (int i = 0; i <= l_max; i++) {
-                cumulativeHist[i] = (cumulativeHist[i] * l_max) / totalPixels;
-            }
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < width; j++) {
-                    output.pixels[i][j][c] = (short) cumulativeHist[input.pixels[i][j][c]];
-                }
-            }
-        }
-    }
+class colourImage {
+	/**
+	 * A datastructure to store a colour image
+	 */
+	public int width;
+	public int height;
+	public short pixels[][][];
 }
